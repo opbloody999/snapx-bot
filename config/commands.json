@@ -1,0 +1,114 @@
+{
+  "description": "Bot commands configuration - single source of truth",
+  "prefix": ".",
+  "commands": {
+    "download": {
+      "handler": "download",
+      "aliases": ["download", "dl"],
+      "description": "Download video from social media",
+      "usage": ".download <url>",
+      "category": "Downloads",
+      "emoji": "📥",
+      "admin_only": false
+    },
+    "chatgpt": {
+      "handler": "chatbot",
+      "aliases": ["chatgpt", "gpt", "ai"],
+      "description": "Enable/disable ChatGPT mode",
+      "usage": ".chatgpt on/off",
+      "category": "AI Chat",
+      "emoji": "🤖",
+      "admin_only": false
+    },
+    "menu": {
+      "handler": "menu",
+      "aliases": ["menu", "m"],
+      "description": "Show command menu",
+      "usage": ".menu",
+      "category": "Info",
+      "emoji": "ℹ️",
+      "admin_only": false
+    },
+    "dev": {
+      "handler": "dev",
+      "aliases": ["dev", "developer", "admin"],
+      "description": "Show developer menu",
+      "usage": ".dev",
+      "category": "Admin",
+      "emoji": "🔐",
+      "admin_only": true
+    },
+    "checkwhatsapp": {
+      "handler": "checkwhatsapp",
+      "aliases": ["checkwhatsapp", "checkwa", "cwa"],
+      "description": "Check if a phone number has WhatsApp",
+      "usage": ".checkwhatsapp <phone>",
+      "category": "Tools",
+      "emoji": "📱",
+      "admin_only": false
+    },
+    "getavatar": {
+      "handler": "getavatar",
+      "aliases": ["getavatar", "avatar", "getpic"],
+      "description": "Get user or group avatar",
+      "usage": ".getavatar <phone/chatid>",
+      "category": "Tools",
+      "emoji": "👤",
+      "admin_only": false
+    },
+    "getcontactinfo": {
+      "handler": "getcontactinfo",
+      "aliases": ["getcontactinfo", "contactinfo", "userinfo"],
+      "description": "Get contact information",
+      "usage": ".userinfo <phone/chatid>",
+      "category": "Tools",
+      "emoji": "📋",
+      "admin_only": false
+    },
+    "shortlink": {
+      "handler": "shortlink",
+      "aliases": ["short", "shorten", "shortlink"],
+      "description": "Shorten a URL",
+      "usage": ".short <url>",
+      "category": "Tools",
+      "emoji": "🔗",
+      "admin_only": false
+    },
+    "mylinks": {
+      "handler": "mylinks",
+      "aliases": ["mylinks", "links"],
+      "description": "List your recent links",
+      "usage": ".mylinks",
+      "category": "Tools",
+      "emoji": "📋",
+      "admin_only": false
+    },
+    "stats": {
+      "handler": "stats",
+      "aliases": ["stats", "statistics", "linkstats"],
+      "description": "View link statistics",
+      "usage": ".stats <link_id>",
+      "category": "Tools",
+      "emoji": "📊",
+      "admin_only": false
+    },
+    "alllinks": {
+      "handler": "alllinks",
+      "aliases": ["alllinks"],
+      "description": "List all recent links (admin)",
+      "usage": ".alllinks",
+      "category": "Admin",
+      "emoji": "🔐",
+      "admin_only": true
+    },
+    "videoonly": {
+      "handler": "videoonly",
+      "aliases": ["videoonly", "videomode"],
+      "description": "Enable/disable video-only mode for groups",
+      "usage": ".videoonly enable/disable <group_id>",
+      "category": "Admin",
+      "emoji": "📹",
+      "admin_only": true
+    }
+  }
+}
