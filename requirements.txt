@@ -1,11 +1,8 @@
 Flask==3.1.2
+gunicorn==23.0.0
 whatsapp-chatbot-python==0.9.6
+whatsapp-api-client-python
 requests==2.32.5
 python-dotenv==1.2.1
 beautifulsoup4==4.14.2
-flask
-python-dotenv
-requests
-whatsapp-api-client-python
-whatsapp-chatbot-python
 libsql-experimental
