@@ -1,4 +1,3 @@
-
 # Bot Response Messages
 # All text responses sent to users
 # Edit these to customize bot messages
@@ -8,7 +7,7 @@ MESSAGES = {
     
     # Main menu showing all available bot commands and features
     "menu": (
-        """👾 *SnapX Bot Commands* ⚡
+        """👾👾 *SnapX Bot Commands* ⚡
 
 _Your fast & intelligent WhatsApp assistant_
 
@@ -19,14 +18,18 @@ _Just send any video URL and I'll download it automatically!_
 *🤖 AI Assistant*
 
 - *_.gpt on_* / *_.gpt off_*
-_Enable or disable ChatGPT mode._
+_Enable or disable ChatGPT-style conversations._
 
 *🔗 Link Shortener*
+
 - *_.short <url>_*
 _Shortens any link with tracking support._
 
 - *_.mylinks_*
 _View your shortened links and click stats._
+
+- *_.stats <link_id>_*
+_View detailed analytics for a specific link._
 
 *📱 WhatsApp Tools*
 
@@ -39,28 +42,27 @@ _Get someone's profile picture._
 - *_.userinfo <number>_*
 _View contact details and metadata._
 
-💡 *Tip:* Use commands without parameters (like _.gpt_ or _.short_) to get usage examples and more options!"""
+💡 Use commands without parameters to get usage examples and more options!"""
     ),
     
     # Welcome message introducing the bot and its features
     "greeting": (
-        """👾 *Welcome to SnapX Bot!*
-        
-Your smart WhatsApp assistant ⚡
+        """👾 *Welcome to SnapX Bot!*  
+Your smart WhatsApp assistant ⚡  
 
-💡 *What SnapX can do:*
+💡 *What SnapX can do:*  
 
-*1. 🎬 Video Downloader*
+*1. 🎬 Video Downloader*  
 _Instantly grab videos from TikTok, YouTube, Instagram & more._
 
-*2. 🧠 AI Chat Assistant*
-_Chat with advanced AI powered by ChatGPT-style intelligence._
+*2. 🧠 AI Chat Assistant*  
+_Chat with advanced AI powered by ChatGPT-style intelligence._  
 
-*3. 🔗 Link Shortener*
-_Create short, trackable links with custom settings._
+*3. 🔗 Link Shortener*  
+_Create, track, and analyze your links with custom aliases and detailed statistics._  
 
-*4. ⚙️ WhatsApp Tools*
-_Check numbers, get avatars and view user information._
+*4. ⚙️ WhatsApp Tools*  
+_Check numbers, get avatars, and view user information._  
 
 _Type *.menu* to see how to use these features!_"""
     ),
@@ -194,22 +196,18 @@ _Type *.menu* to see how to use these features!_"""
     
     # Usage instructions for link shortener command
     "shortener_usage": (
-        "🔗 *Link Shortener*\n\n"
-        "- *Basic Usage:*\n"
-        "_.short <url>_\n\n"
-        "- *With Custom Alias:*\n"
-        "_.short <url> <custom_alias>_\n\n"
-        "- *With Password Protection:*\n"
-        "_.short <url> <custom_alias> <password>_\n\n"
-        "- *Examples:*\n"
-        "> _.short https://example.com/very-long-url_\n"
-        "> _.short https://example.com mylink_\n"
-        "> _.short https://example.com mylink secret123_\n\n"
-        "*Parameters:*\n"
-        "• *url* (required) - The long URL to shorten\n"
-        "• *custom_alias* (optional) - Custom short code instead of random\n"
-        "• *password* (optional) - Protect link with password\n\n"
-        "_Create short, trackable links with custom aliases!_"
+"""🔗 *Link Shortener*
+
+- *_.short <url>_*
+_Shortens any link._
+
+- *_.short <url> <custom_alias>_*
+_Shortens with a custom alias._
+
+- *_.short <url> <custom_alias> <password>_*
+_Shortens with custom alias & password._
+
+🚀 _Easily create, customize, and manage your links — all with SnapX!_***
     ),
     
     # Error message for invalid URL in link shortener
@@ -304,7 +302,9 @@ _Type *.menu* to see how to use these features!_"""
     "alllinks_item_with_alias": (
         "*{number}.* 🏷️ *{alias}*\n\n"
         "- 🔗 *Short URL:* {short_url}\n"
-        "- 📎 *Original:* {long_url}\n"
+        "- 🆔 *Link ID:* {link_id}\n"
+        "- 📅 *Date:* {date}\n"
+        "{password_line}"
         "- 👤 *User:* ...{user_display}\n"
         "- 👆 *Clicks:* {clicks}\n\n"
     ),
@@ -313,7 +313,9 @@ _Type *.menu* to see how to use these features!_"""
     "alllinks_item_no_alias": (
         "*{number}.*\n\n"
         "- 🔗 *Short URL:* {short_url}\n"
-        "- 📎 *Original:* {long_url}\n"
+        "- 🆔 *Link ID:* {link_id}\n"
+        "- 📅 *Date:* {date}\n"
+        "{password_line}"
         "- 👤 *User:* ...{user_display}\n"
         "- 👆 *Clicks:* {clicks}\n\n"
     ),
@@ -329,6 +331,18 @@ _Type *.menu* to see how to use these features!_"""
         "❌ *Unable to Fetch Links*\n\n"
         "Could not retrieve links at the moment.\n\n"
         "_Please try again later_"
+    ),
+    
+    # Pagination footer for mylinks command
+    "mylinks_pagination": (
+        "📄 *Page {current_page} of {total_pages}*\n\n"
+        "_Type_ *_.mylinks {next_page}_* _to view the next page_"
+    ),
+    
+    # Pagination footer for alllinks command  
+    "alllinks_pagination": (
+        "📄 *Page {current_page} of {total_pages}*\n\n"
+        "_Type_ *_.alllinks {next_page}_* _to view the next page_"
     ),
     
     
@@ -470,8 +484,7 @@ _Type *.menu* to see how to use these features!_"""
         "_.checkwhatsapp <number>_\n"
         "_.checkwa <number>_\n\n"
         "*Examples:*\n"
-        "_.checkwa 923001234567_\n"
-        "_.checkwa 03001234567_ _(Pakistan)_\n\n"
+        "_.checkwa 923001234567_\n\n"
         "_Check if a number has WhatsApp_"
     ),
     
@@ -541,8 +554,7 @@ _Type *.menu* to see how to use these features!_"""
         "_.getavatar <number>_\n"
         "_.avatar <number>_\n\n"
         "*Examples:*\n"
-        "_.avatar 923001234567_\n"
-        "_.avatar 03001234567_ _(Pakistan)_\n\n"
+        "_.avatar 923001234567_\n\n"
         "_Get user's profile picture_"
     ),
     
@@ -579,8 +591,7 @@ _Type *.menu* to see how to use these features!_"""
         "_.userinfo <number>_\n"
         "_.contactinfo <number>_\n\n"
         "*Examples:*\n"
-        "_.userinfo 923001234567_\n"
-        "_.userinfo 03001234567_ _(Pakistan)_\n\n"
+        "_.userinfo 923001234567_\n\n"
         "_Get detailed contact information_"
     ),
     
