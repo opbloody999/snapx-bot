@@ -7,7 +7,7 @@ MESSAGES = {
     
     # Main menu showing all available bot commands and features
     "menu": (
-        """👾👾 *SnapX Bot Commands* ⚡
+        """👾 *SnapX Bot Commands* ⚡
 
 _Your fast & intelligent WhatsApp assistant_
 
@@ -196,7 +196,7 @@ _Type *.menu* to see how to use these features!_"""
     
     # Usage instructions for link shortener command
     "shortener_usage": (
-"""🔗 *Link Shortener*
+        """🔗 *Link Shortener*
 
 - *_.short <url>_*
 _Shortens any link._
@@ -207,7 +207,7 @@ _Shortens with a custom alias._
 - *_.short <url> <custom_alias> <password>_*
 _Shortens with custom alias & password._
 
-🚀 _Easily create, customize, and manage your links — all with SnapX!_***
+🚀 _Easily create, customize, and manage your links — all with SnapX!_"""
     ),
     
     # Error message for invalid URL in link shortener
@@ -484,7 +484,8 @@ _Shortens with custom alias & password._
         "_.checkwhatsapp <number>_\n"
         "_.checkwa <number>_\n\n"
         "*Examples:*\n"
-        "_.checkwa 923001234567_\n\n"
+        "_.checkwa 923001234567_\n"
+        "_.checkwa 03001234567_ _(Pakistan)_\n\n"
         "_Check if a number has WhatsApp_"
     ),
     
@@ -554,7 +555,8 @@ _Shortens with custom alias & password._
         "_.getavatar <number>_\n"
         "_.avatar <number>_\n\n"
         "*Examples:*\n"
-        "_.avatar 923001234567_\n\n"
+        "_.avatar 923001234567_\n"
+        "_.avatar 03001234567_ _(Pakistan)_\n\n"
         "_Get user's profile picture_"
     ),
     
@@ -591,7 +593,8 @@ _Shortens with custom alias & password._
         "_.userinfo <number>_\n"
         "_.contactinfo <number>_\n\n"
         "*Examples:*\n"
-        "_.userinfo 923001234567_\n\n"
+        "_.userinfo 923001234567_\n"
+        "_.userinfo 03001234567_ _(Pakistan)_\n\n"
         "_Get detailed contact information_"
     ),
     
