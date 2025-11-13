@@ -402,8 +402,8 @@ def handle_link_shortener(chat_id, args):
     send_message(chat_id, result['message'])
 
 
-def handle_my_links(chat_id):
-    response = handle_mylinks_command(chat_id)
+def handle_my_links(chat_id, args=None):
+    response = handle_mylinks_command(chat_id, args)
     send_message(chat_id, response)
 
 
@@ -412,8 +412,16 @@ def handle_stats(chat_id, args):
     send_message(chat_id, response)
 
 
-def handle_all_links_admin(chat_id):
-    response = handle_alllinks_command()
+def handle_all_links_admin(chat_id, args=None):
+    # Parse page number from args
+    page = 1
+    if args and args.strip():
+        try:
+            page = int(args.strip().split()[0])
+        except (ValueError, IndexError):
+            page = 1
+    
+    response = handle_alllinks_command(page)
     send_message(chat_id, response)
 
 
@@ -528,11 +536,11 @@ def handle_incoming_message(chat_id, message_text, sender_name):
     elif handler == 'shortlink':
         handle_link_shortener(chat_id, args)
     elif handler == 'mylinks':
-        handle_my_links(chat_id)
+        handle_my_links(chat_id, args)
     elif handler == 'stats':
         handle_stats(chat_id, args)
     elif handler == 'alllinks':
-        handle_all_links_admin(chat_id)
+        handle_all_links_admin(chat_id, args)
     elif handler == 'videoonly':
         handle_videoonly_command(chat_id, args)
     else:

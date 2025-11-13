@@ -203,13 +203,13 @@ def get_user_link_ids(user_chat_id):
 
 
 def get_all_link_ids():
-    """Get all shortened link IDs (admin only)"""
+    """Get all shortened link IDs with passwords (admin only)"""
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return []
     try:
         result = execute_with_retry(
             """
-            SELECT link_id, user_chat_id
+            SELECT link_id, user_chat_id, password
             FROM shortened_links
             ORDER BY id DESC
             """
@@ -219,7 +219,8 @@ def get_all_link_ids():
             for row in result.fetchall():
                 links.append({
                     'link_id': row[0],
-                    'user_chat_id': row[1]
+                    'user_chat_id': row[1],
+                    'password': row[2]
                 })
             return links
         return []
