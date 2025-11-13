@@ -120,8 +120,9 @@ def fetch_all_links_from_api():
     return result.get('links', [])
 
 
-def list_user_recent_links(user_chat_id):
-    # List user's recent shortened links by fetching from ice.bio API
+def list_user_recent_links(user_chat_id, page=1):
+    # List user's recent shortened links by fetching from ice.bio API with pagination
+    # Args: user_chat_id, page (default 1)
     # Returns: formatted message string
     
     # Get user's link IDs with passwords from database
@@ -143,15 +144,36 @@ def list_user_recent_links(user_chat_id):
     if not user_links:
         return get_message("mylinks_no_links")
     
-    # Build message using templates
-    message = get_message("mylinks_header", count=len(user_links))
+    # Pagination logic
+    links_per_page = 10
+    total_links = len(user_links)
+    total_pages = (total_links + links_per_page - 1) // links_per_page
     
-    for i, link in enumerate(user_links, 1):
+    # Validate page number
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+    
+    # Calculate slice indices
+    start_idx = (page - 1) * links_per_page
+    end_idx = min(start_idx + links_per_page, total_links)
+    
+    # Get links for current page
+    page_links = user_links[start_idx:end_idx]
+    
+    # Build message using templates
+    message = get_message("mylinks_header", count=total_links)
+    
+    for i, link in enumerate(page_links, start_idx + 1):
         short_url = link.get('shorturl', 'N/A')
         alias = link.get('alias', '')
         clicks = link.get('clicks', 0)
         link_id = str(link.get('id'))
-        date = link.get('date', 'N/A')
+        date_raw = link.get('date', 'N/A')
+        
+        # Extract only date (remove time) - format: "2024-11-13 14:30:45" -> "2024-11-13"
+        date = date_raw.split(' ')[0] if ' ' in date_raw else date_raw
         
         # Get password from database
         password = user_link_data.get(link_id)
@@ -181,6 +203,16 @@ def list_user_recent_links(user_chat_id):
                 clicks=clicks,
                 password_line=password_line
             )
+    
+    # Add pagination footer if there are multiple pages
+    if total_pages > 1:
+        next_page = page + 1 if page < total_pages else 1
+        message += get_message(
+            "mylinks_pagination",
+            current_page=page,
+            total_pages=total_pages,
+            next_page=next_page
+        )
     
     return message
 
@@ -227,9 +259,18 @@ def handle_shortener_command(user_chat_id, args):
     }
 
 
-def handle_mylinks_command(user_chat_id):
-    # Handle my links command
-    return list_user_recent_links(user_chat_id)
+def handle_mylinks_command(user_chat_id, args=None):
+    # Handle my links command with optional page number
+    # Args: user_chat_id, args (optional page number)
+    
+    page = 1
+    if args and args.strip():
+        try:
+            page = int(args.strip().split()[0])
+        except (ValueError, IndexError):
+            page = 1
+    
+    return list_user_recent_links(user_chat_id, page)
 
 
 # ==================== LINK STATS ====================

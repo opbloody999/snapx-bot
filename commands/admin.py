@@ -7,11 +7,12 @@ from config.messages import get_message
 from core.api_requests import greenapi_send_message as send_message
 
 
-def handle_alllinks_command():
-    # List all shortened links (admin only) by fetching from ice.bio API
+def handle_alllinks_command(page=1):
+    # List all shortened links (admin only) by fetching from ice.bio API with pagination
+    # Args: page (default 1)
     # Returns: formatted message string
     
-    # Get all link IDs from database with user info
+    # Get all link IDs from database with user info and passwords
     all_db_links = get_all_link_ids()
     
     if not all_db_links:
@@ -23,8 +24,9 @@ def handle_alllinks_command():
     if all_api_links is None:
         return get_message("alllinks_api_error")
     
-    # Create mapping of link_id to user_chat_id
+    # Create mapping of link_id to user_chat_id and password
     link_id_to_user = {item['link_id']: item['user_chat_id'] for item in all_db_links}
+    link_id_to_password = {item['link_id']: item.get('password') for item in all_db_links}
     
     # Filter to only show links in our database (convert API ids to string for comparison)
     db_link_ids = [item['link_id'] for item in all_db_links]
@@ -33,22 +35,46 @@ def handle_alllinks_command():
     if not filtered_links:
         return get_message("alllinks_no_links")
     
-    # Build message using templates
-    message = get_message("alllinks_header", count=len(filtered_links))
+    # Pagination logic
+    links_per_page = 10
+    total_links = len(filtered_links)
+    total_pages = (total_links + links_per_page - 1) // links_per_page
     
-    for i, link in enumerate(filtered_links, 1):
-        link_id = link.get('id')
+    # Validate page number
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+    
+    # Calculate slice indices
+    start_idx = (page - 1) * links_per_page
+    end_idx = min(start_idx + links_per_page, total_links)
+    
+    # Get links for current page
+    page_links = filtered_links[start_idx:end_idx]
+    
+    # Build message using templates
+    message = get_message("alllinks_header", count=total_links)
+    
+    for i, link in enumerate(page_links, start_idx + 1):
+        link_id = str(link.get('id'))
         short_url = link.get('shorturl', 'N/A')
-        long_url = link.get('longurl', 'N/A')
         alias = link.get('alias', '')
         clicks = link.get('clicks', 0)
-        user_chat_id = link_id_to_user.get(str(link_id), 'Unknown')
+        date_raw = link.get('date', 'N/A')
+        user_chat_id = link_id_to_user.get(link_id, 'Unknown')
+        
+        # Extract only date (remove time) - format: "2024-11-13 14:30:45" -> "2024-11-13"
+        date = date_raw.split(' ')[0] if ' ' in date_raw else date_raw
         
         # Get last 4 digits of user phone
         user_display = user_chat_id.split('@')[0][-4:] if '@' in user_chat_id else 'Unknown'
         
-        # Truncate long URL if needed
-        long_url_display = long_url if len(long_url) <= 40 else long_url[:37] + "..."
+        # Get password from database
+        password = link_id_to_password.get(link_id)
+        
+        # Format password line if password exists
+        password_line = f"- 🔒 *Password:* {password}\n" if password else ""
         
         # Use appropriate template based on alias
         if alias:
@@ -57,7 +83,9 @@ def handle_alllinks_command():
                 number=i,
                 alias=alias,
                 short_url=short_url,
-                long_url=long_url_display,
+                link_id=link_id,
+                date=date,
+                password_line=password_line,
                 user_display=user_display,
                 clicks=clicks
             )
@@ -66,10 +94,22 @@ def handle_alllinks_command():
                 "alllinks_item_no_alias",
                 number=i,
                 short_url=short_url,
-                long_url=long_url_display,
+                link_id=link_id,
+                date=date,
+                password_line=password_line,
                 user_display=user_display,
                 clicks=clicks
             )
+    
+    # Add pagination footer if there are multiple pages
+    if total_pages > 1:
+        next_page = page + 1 if page < total_pages else 1
+        message += get_message(
+            "alllinks_pagination",
+            current_page=page,
+            total_pages=total_pages,
+            next_page=next_page
+        )
     
     return message
 
