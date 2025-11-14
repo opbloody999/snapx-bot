@@ -4,7 +4,7 @@
 import os
 import libsql_experimental as libsql
 from datetime import datetime
-from core.logger import log_db_link_saved, log_db_link_query, log_db_link_found, log_db_reconnect, log_db_init
+from core.logger import log_db_link_saved, log_db_link_query, log_db_link_found, log_db_reconnect, log_db_init, log_raw_request, log_raw_response
 
 # Get database credentials
 TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL", "")
@@ -14,7 +14,7 @@ TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
 db = None
 
 def reconnect_db():
-    """Reconnect to database when connection expires"""
+    # Reconnect to database when connection expires
     global db
     
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
@@ -29,13 +29,17 @@ def reconnect_db():
         return None
 
 def execute_with_retry(query, params=None, needs_commit=False, max_retries=2):
-    """Execute database query with automatic retry on connection errors and optional commit"""
+    # Execute database query with automatic retry on connection errors and optional commit
     global db
+    
+    # Log raw database request
+    log_raw_request('Database', {'query': query, 'params': params})
     
     for attempt in range(max_retries):
         try:
             if not db:
                 if not reconnect_db():
+                    log_raw_response('Database', 'Connection failed', 'ERROR')
                     return None
             
             # Execute query
@@ -47,6 +51,9 @@ def execute_with_retry(query, params=None, needs_commit=False, max_retries=2):
             # Commit if this is a write operation
             if needs_commit:
                 db.commit()
+            
+            # Log raw database response
+            log_raw_response('Database', f'Query executed successfully | Commit: {needs_commit}', 'SUCCESS')
                 
             return result
                 
@@ -64,11 +71,33 @@ def execute_with_retry(query, params=None, needs_commit=False, max_retries=2):
     
     return None
 
+# Create allowed_chats table if it doesn't exist
+def ensure_allowed_chats_table():
+    if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
+        return
+    
+    try:
+        execute_with_retry(
+            """
+            CREATE TABLE IF NOT EXISTS allowed_chats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+            needs_commit=True
+        )
+    except Exception:
+        pass
+
+
 # Initialize database connection on startup
 if TURSO_DATABASE_URL and TURSO_AUTH_TOKEN:
     try:
         db = libsql.connect(TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)  # type: ignore
         log_db_init(True)
+        ensure_allowed_chats_table()
     except Exception as e:
         log_db_init(False, e)
         db = None
@@ -82,7 +111,7 @@ else:
 # ==================== USER MANAGEMENT ====================
 
 def track_user(chat_id):
-    """Track user interaction (silent - no logging for routine tracking)"""
+    # Track user interaction (silent - no logging for routine tracking)
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return False
     
@@ -104,7 +133,7 @@ def track_user(chat_id):
 
 
 def get_user_stats(chat_id):
-    """Get user statistics"""
+    # Get user statistics
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return None
     try:
@@ -128,8 +157,9 @@ def get_user_stats(chat_id):
 
 # ==================== LINK SHORTENING ====================
 
-def save_shortened_link(user_chat_id, link_id, password=None):
-    """Save a shortened link ID with optional password (prevents duplicates)"""
+def save_shortened_link(user_id, link_id, password=None):
+    # Save a shortened link ID with optional password (prevents duplicates)
+    # user_id should be the individual sender ID (@c.us format)
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return False
     
@@ -140,7 +170,7 @@ def save_shortened_link(user_chat_id, link_id, password=None):
             SELECT id FROM shortened_links 
             WHERE user_chat_id = ? AND link_id = ?
             """,
-            (user_chat_id, str(link_id))
+            (user_id, str(link_id))
         )
         
         if result and len(result.fetchall()) > 0:
@@ -150,7 +180,7 @@ def save_shortened_link(user_chat_id, link_id, password=None):
                 SET password = ?
                 WHERE user_chat_id = ? AND link_id = ?
                 """,
-                (password, user_chat_id, str(link_id)),
+                (password, user_id, str(link_id)),
                 needs_commit=True
             )
         else:
@@ -159,11 +189,11 @@ def save_shortened_link(user_chat_id, link_id, password=None):
                 INSERT INTO shortened_links (user_chat_id, link_id, password)
                 VALUES (?, ?, ?)
                 """,
-                (user_chat_id, str(link_id), password),
+                (user_id, str(link_id), password),
                 needs_commit=True
             )
         
-        log_db_link_saved(link_id, user_chat_id)
+        log_db_link_saved(link_id, user_id)
         return True
     except Exception as e:
         print(f"❌ DATABASE ERROR: {e}")
@@ -172,12 +202,13 @@ def save_shortened_link(user_chat_id, link_id, password=None):
         return False
 
 
-def get_user_link_ids(user_chat_id):
-    """Get user's shortened link IDs with passwords"""
+def get_user_link_ids(user_id):
+    # Get user's shortened link IDs with passwords
+    # user_id should be the individual sender ID (@c.us format)
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return {}
     
-    log_db_link_query(user_chat_id)
+    log_db_link_query(user_id)
     
     try:
         result = execute_with_retry(
@@ -187,7 +218,7 @@ def get_user_link_ids(user_chat_id):
             WHERE user_chat_id = ?
             ORDER BY id DESC
             """,
-            (user_chat_id,)
+            (user_id,)
         )
         if result:
             # Return dict mapping link_id to password
@@ -203,7 +234,7 @@ def get_user_link_ids(user_chat_id):
 
 
 def get_all_link_ids():
-    """Get all shortened link IDs with passwords (admin only)"""
+    # Get all shortened link IDs with passwords (admin only)
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return []
     try:
@@ -232,7 +263,7 @@ def get_all_link_ids():
 # ==================== VIDEO-ONLY MODE ====================
 
 def add_video_only_group(group_id, admin_chat_id):
-    """Add a group to video-only mode"""
+    # Add a group to video-only mode
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return False
     try:
@@ -253,7 +284,7 @@ def add_video_only_group(group_id, admin_chat_id):
 
 
 def remove_video_only_group(group_id):
-    """Remove a group from video-only mode"""
+    # Remove a group from video-only mode
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return False
     try:
@@ -265,7 +296,7 @@ def remove_video_only_group(group_id):
 
 
 def is_video_only_group(group_id):
-    """Check if a group is in video-only mode (silent - no logging for routine checks)"""
+    # Check if a group is in video-only mode (silent - no logging for routine checks)
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return False
     
@@ -283,7 +314,7 @@ def is_video_only_group(group_id):
 
 
 def get_all_video_only_groups():
-    """Get all video-only groups"""
+    # Get all video-only groups
     if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
         return []
     try:
@@ -300,3 +331,114 @@ def get_all_video_only_groups():
     except Exception as e:
         print(f"Error getting video-only groups: {e}")
         return []
+
+
+# ==================== ALLOWED CHATS MANAGEMENT ====================
+
+# Save allowed chats from quota exceeded response to database
+def save_allowed_chats(chats_data):
+    # chats_data: list of dicts with 'chat_id' and 'name' keys
+    # Returns: True if data was changed, False if no changes needed or error
+    if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
+        return False
+    
+    try:
+        # Get existing allowed chats
+        existing_chats = get_allowed_chats()
+        
+        # Extract just the chat IDs for comparison
+        existing_ids = set(chat['chat_id'] for chat in existing_chats)
+        new_ids = set(chat['chat_id'] for chat in chats_data)
+        
+        # If the chat IDs match, no need to update
+        if existing_ids == new_ids:
+            return False
+        
+        # Clear existing data first
+        execute_with_retry("DELETE FROM allowed_chats", needs_commit=True)
+        
+        # Insert new allowed chats
+        for chat in chats_data:
+            execute_with_retry(
+                """
+                INSERT INTO allowed_chats (chat_id, name)
+                VALUES (?, ?)
+                """,
+                (chat['chat_id'], chat['name']),
+                needs_commit=True
+            )
+        
+        return True
+    except Exception as e:
+        print(f"Error saving allowed chats: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+# Get all allowed chats from database
+def get_allowed_chats():
+    if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
+        return []
+    
+    try:
+        result = execute_with_retry(
+            "SELECT id, chat_id, name FROM allowed_chats ORDER BY id"
+        )
+        if result:
+            chats = []
+            for row in result.fetchall():
+                chats.append({
+                    'id': row[0],
+                    'chat_id': row[1],
+                    'name': row[2]
+                })
+            return chats
+        return []
+    except Exception as e:
+        return []
+
+
+# Check if a chat is in the allowed list (from database)
+def is_chat_allowed_db(chat_id):
+    if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
+        # If no DB, allow all chats
+        return True
+    
+    try:
+        # Check if this specific chat is in allowed list
+        result = execute_with_retry(
+            "SELECT 1 FROM allowed_chats WHERE chat_id = ?",
+            (chat_id,)
+        )
+        if result:
+            rows = result.fetchall()
+            if len(rows) > 0:
+                return True
+        
+        # If no allowed chats saved yet, allow all
+        allowed_chats = get_allowed_chats()
+        if len(allowed_chats) == 0:
+            return True
+        
+        # Chat not in allowed list
+        return False
+    except Exception:
+        # On error, allow by default
+        return True
+
+
+# Check if we have any allowed chats saved in database
+def has_allowed_chats():
+    if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
+        return False
+    
+    try:
+        result = execute_with_retry("SELECT COUNT(*) FROM allowed_chats")
+        if result:
+            rows = result.fetchall()
+            if rows and rows[0][0] > 0:
+                return True
+        return False
+    except Exception:
+        return False

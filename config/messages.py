@@ -226,6 +226,16 @@ _Shortens with custom alias & password._
         "_Use_ *_.stats {link_id}_* _to view detailed statistics_"
     ),
     
+    # Template for alias info line when custom alias is provided
+    "shortener_alias_line": (
+        "🏷️ *Alias:* {alias}\n"
+    ),
+    
+    # Template for password info line when password is provided
+    "shortener_password_line": (
+        "🔒 *Password:* {password}\n"
+    ),
+    
     # Error message when link shortening API fails
     "shortener_api_error": (
         "❌ *Link Shortening Failed*\n\n"
@@ -335,13 +345,13 @@ _Shortens with custom alias & password._
     
     # Pagination footer for mylinks command
     "mylinks_pagination": (
-        "📄 *Page {current_page} of {total_pages}*\n\n"
+        "📂 *Page {current_page} of {total_pages}*\n\n"
         "_Type_ *_.mylinks {next_page}_* _to view the next page_"
     ),
     
     # Pagination footer for alllinks command  
     "alllinks_pagination": (
-        "📄 *Page {current_page} of {total_pages}*\n\n"
+        "📂 *Page {current_page} of {total_pages}*\n\n"
         "_Type_ *_.alllinks {next_page}_* _to view the next page_"
     ),
     
@@ -410,6 +420,45 @@ _Shortens with custom alias & password._
         "_Please try again_"
     ),
     
+    # Stats display header with link details
+    "stats_header": (
+        "📊 *Link Statistics*\n\n"
+        "🆔 *Link ID:* {link_id}\n"
+        "🔗 *Short URL:* {short_url}\n\n"
+    ),
+    
+    # Stats click statistics section
+    "stats_clicks": (
+        "📈 *Click Statistics*\n"
+        "- Total Clicks: {clicks}\n"
+        "- Unique Clicks: {unique_clicks}\n\n"
+    ),
+    
+    # Stats countries section header
+    "stats_countries_header": (
+        "🌍 *Top Countries*\n"
+    ),
+    
+    # Stats browsers section header
+    "stats_browsers_header": (
+        "🌐 *Top Browsers*\n"
+    ),
+    
+    # Stats OS section header
+    "stats_os_header": (
+        "💻 *Top Operating Systems*\n"
+    ),
+    
+    # Stats footer with available stats
+    "stats_footer_with_stats": (
+        "_These are the available statistics: Clicks, {stats_list}_"
+    ),
+    
+    # Stats footer when only clicks available
+    "stats_footer_clicks_only": (
+        "_Only click statistics are currently available for this link_"
+    ),
+    
     
     # ==================== ADMIN MESSAGES ====================
     
@@ -419,9 +468,9 @@ _Shortens with custom alias & password._
         "*Admin-Only Commands*\n\n"
         "- *_.alllinks_*\n"
         "_(View all shortened links)_\n\n"
-        "- *_.videoonly enable <group_id>_*\n"
+        "- *_.videoonly enable_*\n"
         "_(Enable silent video-only mode for a group)_\n\n"
-        "- *_.videoonly disable <group_id>_*\n"
+        "- *_.videoonly disable_*\n"
         "_(Disable video-only mode)_\n\n"
         "⚠️ _Admin commands only accessible by developer_"
     ),
@@ -437,41 +486,94 @@ _Shortens with custom alias & password._
     "videoonly_usage": (
         "📹 *Video-Only Mode*\n\n"
         "*Usage:*\n"
-        "_.videoonly enable <group_id>_\n"
-        "_.videoonly disable <group_id>_\n\n"
-        "*Example:*\n"
-        "_.videoonly enable 123456@g.us_\n\n"
+        "_.videoonly enable_\n"
+        "_.videoonly disable_\n\n"
         "_Enable this mode to make the bot silently download videos in a group without any messages or commands_"
     ),
     
-    # Error message when group ID is missing in videoonly command
-    "videoonly_missing_group_id": (
-        "❌ Please provide group ID\n\n"
-        "*Usage:* .videoonly {action} <group_id>"
+    # Message when no groups available for video-only mode
+    "videoonly_no_groups": (
+        "📹 *No Groups Available*\n\n"
+        "❌ No groups found in your allowed list.\n\n"
+        "_Video-only mode can only be enabled for groups._"
+    ),
+    
+    # Message when all groups are already in video-only mode
+    "videoonly_all_groups_enabled": (
+        "📹 *All Groups Already in Video-Only Mode*\n\n"
+        "✅ All your groups are already in video-only mode.\n\n"
+        "_Use_ *_.videoonly disable_* _to disable video-only mode for a group._"
+    ),
+    
+    # Message when no groups are in video-only mode
+    "videoonly_no_groups_enabled": (
+        "📹 *No Groups in Video-Only Mode*\n\n"
+        "❌ None of your groups have video-only mode enabled.\n\n"
+        "_Use_ *_.videoonly enable_* _to enable video-only mode for a group._"
+    ),
+    
+    # Group selection header for enable action
+    "videoonly_select_group_enable": (
+        "📹 *Enable Video-Only Mode*\n\n"
+        "✨ Select a group to enable silent video downloading:\n\n"
+        "📂 *Available Groups* ({count}):\n\n"
+    ),
+    
+    # Group selection header for disable action
+    "videoonly_select_group_disable": (
+        "📹 *Disable Video-Only Mode*\n\n"
+        "🔓 Select a group to disable video-only mode:\n\n"
+        "📂 *Available Groups* ({count}):\n\n"
+    ),
+    
+    # Individual group item in selection list
+    "videoonly_group_item": (
+        "*{number}.* 📱 {name}\n"
+    ),
+    
+    # Footer for group selection message
+    "videoonly_select_footer": (
+        "\n💬 *Reply with the group number* (e.g., 1, 2, 3)"
+    ),
+    
+    # Error message for invalid selection (not a number)
+    "videoonly_invalid_selection": (
+        "❌ *Invalid Selection*\n\n"
+        "Please reply with a valid number.\n\n"
+        "_Example: 1_"
+    ),
+    
+    # Error message for number out of range
+    "videoonly_invalid_number": (
+        "❌ *Invalid Number*\n\n"
+        "Please select a number between 1 and {max}."
     ),
     
     # Confirmation message when video-only mode is enabled
     "videoonly_enabled": (
         "✅ *Video-Only Mode Enabled*\n\n"
-        "📹 Group: {group_id}\n\n"
-        "Bot will now only download videos silently in this group."
+        "📹 *Group:* {group_name}\n\n"
+        "🎬 Bot will now only download videos silently in this group.\n\n"
+        "_No other commands or messages will be processed._"
     ),
     
     # Confirmation message when video-only mode is disabled
     "videoonly_disabled": (
         "✅ *Video-Only Mode Disabled*\n\n"
-        "📹 Group: {group_id}\n\n"
-        "Bot will now respond normally in this group."
+        "📹 *Group:* {group_name}\n\n"
+        "🔓 Bot will now respond normally to all commands in this group."
     ),
     
     # Error message when enabling video-only mode fails
     "videoonly_enable_failed": (
-        "❌ Failed to enable video-only mode"
+        "❌ *Failed to Enable Video-Only Mode*\n\n"
+        "An error occurred. Please try again."
     ),
     
     # Error message when disabling video-only mode fails
     "videoonly_disable_failed": (
-        "❌ Failed to disable video-only mode"
+        "❌ *Failed to Disable Video-Only Mode*\n\n"
+        "An error occurred. Please try again."
     ),
     
     
@@ -484,8 +586,7 @@ _Shortens with custom alias & password._
         "_.checkwhatsapp <number>_\n"
         "_.checkwa <number>_\n\n"
         "*Examples:*\n"
-        "_.checkwa 923001234567_\n"
-        "_.checkwa 03001234567_ _(Pakistan)_\n\n"
+        "_.checkwa 923001234567_\n\n"
         "_Check if a number has WhatsApp_"
     ),
     
@@ -555,8 +656,7 @@ _Shortens with custom alias & password._
         "_.getavatar <number>_\n"
         "_.avatar <number>_\n\n"
         "*Examples:*\n"
-        "_.avatar 923001234567_\n"
-        "_.avatar 03001234567_ _(Pakistan)_\n\n"
+        "_.avatar 923001234567_\n\n"
         "_Get user's profile picture_"
     ),
     
@@ -593,8 +693,7 @@ _Shortens with custom alias & password._
         "_.userinfo <number>_\n"
         "_.contactinfo <number>_\n\n"
         "*Examples:*\n"
-        "_.userinfo 923001234567_\n"
-        "_.userinfo 03001234567_ _(Pakistan)_\n\n"
+        "_.userinfo 923001234567_\n\n"
         "_Get detailed contact information_"
     ),
     

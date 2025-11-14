@@ -23,7 +23,7 @@ The architecture is structured into three main directories:
 
 Key features and technical implementations include:
 - **Centralized API Architecture**: All external API interactions (ChatGPT, video downloader, link shortener, Green API) are managed through `core/api_requests.py` for consistent handling and credential management.
-- **Allowed Chats Filter**: A configurable setting in `config.py` to restrict bot responses to a maximum of three specified chats or groups, aligning with Green API limitations.
+- **Automatic Quota Management**: The bot responds to all chats initially. When Green API quota is exceeded, it automatically captures allowed chat IDs from the quotaExceeded webhook, fetches chat/group names via Green API, saves them to the database, and restricts responses to only those chats going forward.
 - **Single Instance Operation**: A simplified architecture utilizing one Green API instance and a single webhook endpoint.
 - **Link Shortener**: Integration with the ice.bio API for URL shortening, user tracking, and click analytics, with smart URL handling to prevent conflicts with other features.
 - **Video-Only Mode**: A group-specific feature designed to enable silent video downloads, streamlining media sharing in designated groups by suppressing command responses.

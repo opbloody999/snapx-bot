@@ -6,18 +6,11 @@ import os
 
 # Admin/Developer phone number - has access to admin commands
 # Format: phone number without @ or country code prefix
+# This will be automatically set to the instance owner's number on startup
 ADMIN_PHONE_NUMBER = "923453870090"
 
-# Allowed chats - Only respond to messages from these chats/groups
-# Maximum 3 chats allowed (Green API limit)
-# Format for chats: phone number without @ (e.g., "923001234567")
-# Format for groups: group ID without @ (e.g., "120363123456789012@g.us")
-# Example: ["923001234567", "923009876543", "120363123456789012@g.us"]
-ALLOWED_CHATS = [
-    "923453870090"
-    
-    
-]
+# Note: Allowed chats are now informational only (displayed at startup)
+# The bot will respond to ALL incoming webhooks with commands
 
 # Database configuration (Turso)
 TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL", "")
@@ -25,6 +18,21 @@ TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
 
 # Link shortener API
 ICE_BIO_API_KEY = os.getenv("ICE_BIO_API_KEY", "")
+
+def load_settings():
+    # Load settings from settings.json (no caching - always reads fresh)
+    try:
+        settings_path = os.path.join('config', 'settings.json')
+        with open(settings_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {"features": {}}
+
+
+def show_raw_webhook_logs():
+    # Check if raw webhook logging is enabled (reads fresh from file each time)
+    settings = load_settings()
+    return settings.get('features', {}).get('raw_webhook_logging', False)
 
 
 def get_prefix():
@@ -38,6 +46,12 @@ def get_prefix():
         return '.'
 
 
+def set_admin_number(phone_number):
+    # Set the admin phone number dynamically
+    global ADMIN_PHONE_NUMBER
+    ADMIN_PHONE_NUMBER = phone_number
+
+
 def is_admin(chat_id):
     # Check if a chat_id is from the admin user
     # chat_id format: "93779421543@c.us"
@@ -45,24 +59,3 @@ def is_admin(chat_id):
     
     clean_chat_id = chat_id.replace('@c.us', '').replace('@g.us', '').replace('+', '')
     return clean_chat_id == ADMIN_PHONE_NUMBER
-
-
-def is_allowed_chat(chat_id):
-    # Check if a chat_id is in the allowed chats list
-    # chat_id format: "923001234567@c.us" or "120363123456789012@g.us"
-    # Returns True if chat is allowed, or if ALLOWED_CHATS is empty (allow all)
-    
-    if not ALLOWED_CHATS:
-        # Empty list means allow all chats
-        return True
-    
-    # Check both with and without domain suffix
-    clean_chat_id = chat_id.replace('@c.us', '').replace('@g.us', '')
-    
-    for allowed in ALLOWED_CHATS:
-        # Remove @ suffix from allowed entry for comparison
-        clean_allowed = allowed.replace('@c.us', '').replace('@g.us', '')
-        if clean_chat_id == clean_allowed:
-            return True
-    
-    return False

@@ -57,6 +57,10 @@ CONSOLE_MESSAGES = {
     'greenapi_response_success': "✅ Green API → Success | Message ID: {message_id}",
     'greenapi_response_failed': "❌ Green API → Failed to send",
     
+    # ==================== RAW REQUEST/RESPONSE LOGGING ====================
+    'raw_request': "📥 RAW REQUEST → {api_name}\n{payload}",
+    'raw_response': "📤 RAW RESPONSE → {api_name} | Status: {status}\n{payload}",
+    
     # ==================== DATABASE OPERATIONS ====================
     'db_link_saved': "💾 Database → Link saved | ID: {link_id} | User: ...{user}",
     'db_link_query': "🔍 Database → Querying links for user: ...{user}",
@@ -203,8 +207,8 @@ def log_link_error(error_type, **kwargs):
 def log_greenapi_send(operation, chat_id, **kwargs):
     # Log Green API send operations
     # operation: 'message', 'file_url', 'file_upload', 'poll', 'location', 'contact'
-    short_chat = chat_id[-15:] if len(chat_id) > 15 else chat_id
-    log(f'greenapi_send_{operation}', chat_id=short_chat, **kwargs)
+    # Show full chat ID (no truncation)
+    log(f'greenapi_send_{operation}', chat_id=chat_id, **kwargs)
 
 
 def log_greenapi_response(success, message_id=None):
@@ -349,9 +353,101 @@ def log_webhook(webhook_type):
     # Log webhook events (only incoming messages, ignore spam)
     if webhook_type == 'incomingMessageReceived':
         log('webhook_incoming')
-    elif webhook_type in ['outgoingMessageStatus', 'outgoingAPIMessageReceived']:
-        # Silently ignore these spam events - no log needed
+    elif webhook_type in ['outgoingMessageStatus', 'outgoingAPIMessageReceived', 'quotaExceeded']:
+        # Silently ignore these events - handled separately or not needed
         pass
     else:
         # Log any other unexpected webhook types for debugging
         log('ignored_outgoing_webhook', webhook_type=webhook_type)
+
+
+# ==================== RAW REQUEST/RESPONSE LOGGING ====================
+
+def log_raw_request(api_name, payload):
+    # Log raw API/webhook/database request with formatting
+    # api_name: e.g., 'Webhook', 'Green API', 'ChatGPT', 'Video Downloader', 'Link Shortener', 'Database'
+    # payload: dict, string, or object to be logged
+    
+    from config.config import show_raw_webhook_logs
+    
+    if not show_raw_webhook_logs():
+        return
+    
+    import json
+    
+    try:
+        # Convert payload to pretty JSON if it's a dict
+        if isinstance(payload, dict):
+            json_str = json.dumps(payload, indent=2, ensure_ascii=False)
+        elif isinstance(payload, str):
+            json_str = payload
+        else:
+            json_str = str(payload)
+        
+        # Don't truncate - show everything in raw mode
+        print("ㅤ")
+        log('raw_request', api_name=api_name, payload=json_str)
+    except Exception as e:
+        # Fallback to simple string representation
+        print("ㅤ")
+        print(f"📥 RAW REQUEST → {api_name}")
+        print(f"{payload}")
+
+
+def log_raw_response(api_name, payload, status=None):
+    # Log raw API/webhook/database response with formatting
+    # api_name: e.g., 'Webhook', 'Green API', 'ChatGPT', 'Video Downloader', 'Link Shortener', 'Database'
+    # payload: dict, string, or object to be logged
+    # status: HTTP status code or status string
+    
+    from config.config import show_raw_webhook_logs
+    
+    if not show_raw_webhook_logs():
+        return
+    
+    import json
+    
+    try:
+        # Convert payload to pretty JSON if it's a dict
+        if isinstance(payload, dict):
+            json_str = json.dumps(payload, indent=2, ensure_ascii=False)
+        elif isinstance(payload, str):
+            json_str = payload
+        else:
+            json_str = str(payload)
+        
+        status_str = status if status is not None else "N/A"
+        
+        # Don't truncate - show everything in raw mode
+        log('raw_response', api_name=api_name, status=status_str, payload=json_str)
+        print("ㅤ")
+    except Exception as e:
+        # Fallback to simple string representation
+        print(f"📤 RAW RESPONSE → {api_name} | Status: {status}")
+        print(f"{payload}")
+        print("ㅤ")
+
+
+def log_allowed_chats_display(chats):
+    # Display allowed chats at startup with beautiful formatting
+    # chats: list of dicts with 'chat_id' and 'name' keys
+    
+    if not chats:
+        return
+    
+    # Number emojis
+    number_emojis = ["1️⃣ ", "2️⃣ ", "3️⃣ ", "4️⃣ ", "5️⃣ ", "6️⃣ ", "7️⃣ ", "8️⃣ ", "9️⃣ ", "🔟 "]
+    
+    print("ㅤ")
+    print("✅ Allowed Chats:")
+    
+    for i, chat in enumerate(chats):
+        chat_id = chat.get('chat_id', 'Unknown')
+        name = chat.get('name', 'Unknown')
+        
+        # Get number emoji (fallback to number if beyond 10)
+        emoji = number_emojis[i] if i < len(number_emojis) else f"{i+1}."
+        
+        print(f"{emoji} {chat_id} | {name}")
+    
+    print("ㅤ")

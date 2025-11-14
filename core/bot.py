@@ -44,7 +44,8 @@ from commands.link_shortener import (
 )
 from commands.admin import (
     handle_alllinks_command,
-    handle_videoonly_command
+    handle_videoonly_command,
+    handle_videoonly_selection
 )
 
 # Import Green API functions
@@ -295,10 +296,8 @@ def handle_chatbot_command(chat_id, args):
 
 # Handle auto video download
 def handle_auto_download(chat_id, message_text, silent=False):
-    """
-    Handle video download
-    silent: If True, don't send confirmation messages (for video-only mode)
-    """
+    # Handle video download
+    # silent: If True, don't send confirmation messages (for video-only mode)
     url = extract_url(message_text)
     
     if not url:
@@ -397,13 +396,13 @@ def handle_getcontactinfo_command(chat_id, args):
 
 
 # Handle link shortener commands
-def handle_link_shortener(chat_id, args):
-    result = handle_shortener_command(chat_id, args)
+def handle_link_shortener(chat_id, user_id, args):
+    result = handle_shortener_command(user_id, args)
     send_message(chat_id, result['message'])
 
 
-def handle_my_links(chat_id, args=None):
-    response = handle_mylinks_command(chat_id, args)
+def handle_my_links(chat_id, user_id, args=None):
+    response = handle_mylinks_command(user_id, args)
     send_message(chat_id, response)
 
 
@@ -445,16 +444,17 @@ def check_chatgpt_timeout(chat_id):
 
 
 # Main message handler
-def handle_incoming_message(chat_id, message_text, sender_name):
+def handle_incoming_message(chat_id, user_id, message_text, sender_name):
     # Log incoming message
     log_incoming_message(sender_name, chat_id, message_text)
     
-    # Track user interaction in database
-    track_user(chat_id)
+    # Track user interaction in database (use user_id for individual tracking)
+    track_user(user_id)
     
-    # Check if this is a video-only group
+    # Check if this is a video-only group (use chat_id for group feature check)
     is_video_only = is_video_only_group(chat_id)
-    is_dev = is_admin(chat_id)
+    # Check admin status (use user_id to check individual sender)
+    is_dev = is_admin(user_id)
     
     if is_video_only and not is_dev:
         # Video-only mode: Only process video downloads, silently
@@ -468,6 +468,12 @@ def handle_incoming_message(chat_id, message_text, sender_name):
     
     # Check for ChatGPT timeout
     check_chatgpt_timeout(chat_id)
+    
+    # Check for videoonly session - handle numeric responses for group selection
+    # This must be checked BEFORE ChatGPT mode to allow admin to select groups
+    if handle_videoonly_selection(chat_id, message_text):
+        # Message was a videoonly selection response, handled
+        return
     
     # Check if ChatGPT mode is active
     if is_chatbot_active(chat_id):
@@ -510,10 +516,10 @@ def handle_incoming_message(chat_id, message_text, sender_name):
     # Log command detection
     log_command(handler, args or '', admin_only)
     
-    # Check admin permissions for admin-only commands
-    if admin_only and not is_admin(chat_id):
+    # Check admin permissions for admin-only commands (use user_id to check individual)
+    if admin_only and not is_admin(user_id):
         send_message(chat_id, get_message("admin_only"))
-        log_command_blocked(chat_id)
+        log_command_blocked(user_id)
         return
     
     # Route to appropriate handler
@@ -534,9 +540,9 @@ def handle_incoming_message(chat_id, message_text, sender_name):
     elif handler == 'getcontactinfo':
         handle_getcontactinfo_command(chat_id, args)
     elif handler == 'shortlink':
-        handle_link_shortener(chat_id, args)
+        handle_link_shortener(chat_id, user_id, args)
     elif handler == 'mylinks':
-        handle_my_links(chat_id, args)
+        handle_my_links(chat_id, user_id, args)
     elif handler == 'stats':
         handle_stats(chat_id, args)
     elif handler == 'alllinks':

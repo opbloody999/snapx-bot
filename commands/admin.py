@@ -1,10 +1,14 @@
 # Admin Commands
 # Admin-only features: alllinks, videoonly mode
 
-from core.database import get_all_link_ids, add_video_only_group, remove_video_only_group
+from core.database import get_all_link_ids, add_video_only_group, remove_video_only_group, get_allowed_chats, is_video_only_group
 from commands.link_shortener import fetch_all_links_from_api
 from config.messages import get_message
 from core.api_requests import greenapi_send_message as send_message
+
+# Session management for videoonly command - tracks pending selections
+videoonly_sessions = {}  # {chat_id: {'action': 'enable'/'disable', 'groups': [list of groups]}}
+
 
 
 def handle_alllinks_command(page=1):
@@ -126,34 +130,119 @@ def handle_videoonly_command(chat_id, args):
     action = parts[0].lower() if parts else ''
     
     if action == 'enable' or action == 'on':
-        if len(parts) < 2:
-            send_message(chat_id, get_message("videoonly_missing_group_id", action="enable"))
+        # Get allowed groups from database
+        allowed_chats = get_allowed_chats()
+        
+        # Filter only groups (ending with @g.us)
+        all_groups = [chat for chat in allowed_chats if chat['chat_id'].endswith('@g.us')]
+        
+        if not all_groups:
+            send_message(chat_id, get_message("videoonly_no_groups"))
             return
         
-        group_id = parts[1]
-        if not group_id.endswith('@g.us'):
-            group_id = f"{group_id}@g.us"
+        # Filter groups that are NOT already in video-only mode
+        groups = [group for group in all_groups if not is_video_only_group(group['chat_id'])]
         
-        success = add_video_only_group(group_id, chat_id)
-        if success:
-            send_message(chat_id, get_message("videoonly_enabled", group_id=group_id))
-        else:
-            send_message(chat_id, get_message("videoonly_enable_failed"))
+        if not groups:
+            send_message(chat_id, get_message("videoonly_all_groups_enabled"))
+            return
+        
+        # Store session for this user
+        videoonly_sessions[chat_id] = {
+            'action': 'enable',
+            'groups': groups
+        }
+        
+        # Build and send group selection message
+        message = get_message("videoonly_select_group_enable", count=len(groups))
+        
+        for idx, group in enumerate(groups, 1):
+            group_name = group['name']
+            message += get_message("videoonly_group_item", number=idx, name=group_name)
+        
+        message += get_message("videoonly_select_footer")
+        send_message(chat_id, message)
     
     elif action == 'disable' or action == 'off':
-        if len(parts) < 2:
-            send_message(chat_id, get_message("videoonly_missing_group_id", action="disable"))
+        # Get allowed groups from database
+        allowed_chats = get_allowed_chats()
+        
+        # Filter only groups (ending with @g.us)
+        all_groups = [chat for chat in allowed_chats if chat['chat_id'].endswith('@g.us')]
+        
+        if not all_groups:
+            send_message(chat_id, get_message("videoonly_no_groups"))
             return
         
-        group_id = parts[1]
-        if not group_id.endswith('@g.us'):
-            group_id = f"{group_id}@g.us"
+        # Filter groups that ARE in video-only mode
+        groups = [group for group in all_groups if is_video_only_group(group['chat_id'])]
         
-        success = remove_video_only_group(group_id)
-        if success:
-            send_message(chat_id, get_message("videoonly_disabled", group_id=group_id))
-        else:
-            send_message(chat_id, get_message("videoonly_disable_failed"))
+        if not groups:
+            send_message(chat_id, get_message("videoonly_no_groups_enabled"))
+            return
+        
+        # Store session for this user
+        videoonly_sessions[chat_id] = {
+            'action': 'disable',
+            'groups': groups
+        }
+        
+        # Build and send group selection message
+        message = get_message("videoonly_select_group_disable", count=len(groups))
+        
+        for idx, group in enumerate(groups, 1):
+            group_name = group['name']
+            message += get_message("videoonly_group_item", number=idx, name=group_name)
+        
+        message += get_message("videoonly_select_footer")
+        send_message(chat_id, message)
     
     else:
         send_message(chat_id, get_message("videoonly_usage"))
+
+
+def handle_videoonly_selection(chat_id, selection):
+    # Handle numeric selection for videoonly command
+    # Returns True if handled, False if not a videoonly session
+    
+    if chat_id not in videoonly_sessions:
+        return False
+    
+    session = videoonly_sessions[chat_id]
+    groups = session['groups']
+    action = session['action']
+    
+    # Validate selection is a number
+    try:
+        selection_num = int(selection.strip())
+    except ValueError:
+        send_message(chat_id, get_message("videoonly_invalid_selection"))
+        return True
+    
+    # Validate selection is in range
+    if selection_num < 1 or selection_num > len(groups):
+        send_message(chat_id, get_message("videoonly_invalid_number", max=len(groups)))
+        return True
+    
+    # Get selected group
+    selected_group = groups[selection_num - 1]
+    group_id = selected_group['chat_id']
+    group_name = selected_group['name']
+    
+    # Perform action
+    if action == 'enable':
+        success = add_video_only_group(group_id, chat_id)
+        if success:
+            send_message(chat_id, get_message("videoonly_enabled", group_name=group_name))
+        else:
+            send_message(chat_id, get_message("videoonly_enable_failed"))
+    else:  # disable
+        success = remove_video_only_group(group_id)
+        if success:
+            send_message(chat_id, get_message("videoonly_disabled", group_name=group_name))
+        else:
+            send_message(chat_id, get_message("videoonly_disable_failed"))
+    
+    # Clear session
+    del videoonly_sessions[chat_id]
+    return True

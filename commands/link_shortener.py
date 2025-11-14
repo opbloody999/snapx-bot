@@ -1,6 +1,7 @@
 # Link Shortener using ice.bio API
 # Features: Shorten links with custom alias and password, view user links with stats
 
+import time
 from core.database import save_shortened_link, get_user_link_ids
 from config.messages import get_message
 from core.api_requests import link_shorten_request, link_list_request, link_stats_request
@@ -8,10 +9,13 @@ from core.logger import log_api_error, log_link_operation, log_db_operation
 
 # ==================== LINK SHORTENING ====================
 
-def shorten_link(user_chat_id, url, custom_alias=None, password=None):
+def shorten_link(user_id, url, custom_alias=None, password=None):
     # Shorten a URL using ice.bio API
-    # Args: user_chat_id, url, custom_alias (optional), password (optional)
+    # Args: user_id, url, custom_alias (optional), password (optional)
     # Returns: dict with 'success', 'message', 'short_url', 'link_id'
+    
+    # Performance timing
+    start_time = time.perf_counter()
     
     if not url.startswith(('http://', 'https://')):
         return {
@@ -20,7 +24,10 @@ def shorten_link(user_chat_id, url, custom_alias=None, password=None):
         }
     
     # Call API via centralized handler
+    api_start = time.perf_counter()
     result = link_shorten_request(url, custom_alias, password)
+    api_duration = (time.perf_counter() - api_start) * 1000
+    print(f"⏱️  Link Shortener API call took {api_duration:.2f}ms")
     
     if not result.get('success'):
         # Handle different error types
@@ -69,13 +76,18 @@ def shorten_link(user_chat_id, url, custom_alias=None, password=None):
     short_url = result.get('short_url')
     
     # Save link ID and password to database
-    log_db_operation('link_saved', link_id=link_id, user=user_chat_id)
-    save_shortened_link(user_chat_id, link_id, password)
+    db_start = time.perf_counter()
+    log_db_operation('link_saved', link_id=link_id, user=user_id)
+    save_shortened_link(user_id, link_id, password)
+    db_duration = (time.perf_counter() - db_start) * 1000
+    print(f"⏱️  Database save took {db_duration:.2f}ms")
+    
     log_link_operation('shortened', short_url=short_url, link_id=link_id)
     
-    # Build success message
-    alias_info = f"🏷️ *Alias:* {custom_alias}\n" if custom_alias else ""
-    password_info = f"🔒 *Password:* {password}\n" if password else ""
+    # Build success message with templates from messages.py
+    msg_start = time.perf_counter()
+    alias_info = get_message("shortener_alias_line", alias=custom_alias) if custom_alias else ""
+    password_info = get_message("shortener_password_line", password=password) if password else ""
     
     message = get_message(
         "shortener_success",
@@ -84,6 +96,11 @@ def shorten_link(user_chat_id, url, custom_alias=None, password=None):
         password_info=password_info,
         link_id=link_id
     )
+    msg_duration = (time.perf_counter() - msg_start) * 1000
+    print(f"⏱️  Message formatting took {msg_duration:.2f}ms")
+    
+    total_duration = (time.perf_counter() - start_time) * 1000
+    print(f"⏱️  TOTAL link shortening took {total_duration:.2f}ms")
     
     return {
         'success': True,
@@ -96,13 +113,15 @@ def shorten_link(user_chat_id, url, custom_alias=None, password=None):
 # ==================== LINK LISTING ====================
 
 def fetch_all_links_from_api():
-    # Fetch all links from ice.bio API
+    # Fetch links from ice.bio API
     # Returns: list of link objects or None on error
+    # Note: Reduced limit from 1000 to 200 for better performance
+    # Most users won't have more than 200 links, and this significantly speeds up the request
     
     log_link_operation('fetching')
     
-    # Call API via centralized handler
-    result = link_list_request(limit=1000, page=1)
+    # Call API via centralized handler (reduced from 1000 to 200 for performance)
+    result = link_list_request(limit=200, page=1)
     
     if not result.get('success'):
         # Handle error
@@ -120,14 +139,14 @@ def fetch_all_links_from_api():
     return result.get('links', [])
 
 
-def list_user_recent_links(user_chat_id, page=1):
+def list_user_recent_links(user_id, page=1):
     # List user's recent shortened links by fetching from ice.bio API with pagination
-    # Args: user_chat_id, page (default 1)
+    # Args: user_id, page (default 1)
     # Returns: formatted message string
     
     # Get user's link IDs with passwords from database
-    log_db_operation('link_query', chat_id=user_chat_id)
-    user_link_data = get_user_link_ids(user_chat_id)
+    log_db_operation('link_query', chat_id=user_id)
+    user_link_data = get_user_link_ids(user_id)
     
     if not user_link_data:
         return get_message("mylinks_no_links")
@@ -178,8 +197,8 @@ def list_user_recent_links(user_chat_id, page=1):
         # Get password from database
         password = user_link_data.get(link_id)
         
-        # Format password line if password exists
-        password_line = f"- 🔒 *Password:* {password}\n" if password else ""
+        # Format password line if password exists (using template from messages.py)
+        password_line = f"- {get_message('shortener_password_line', password=password)}" if password else ""
         
         # Use appropriate template based on alias
         if alias:
@@ -219,7 +238,7 @@ def list_user_recent_links(user_chat_id, page=1):
 
 # ==================== COMMAND HANDLERS ====================
 
-def handle_shortener_command(user_chat_id, args):
+def handle_shortener_command(user_id, args):
     # Handle link shortening command
     
     if not args or args.strip() == '':
@@ -242,7 +261,7 @@ def handle_shortener_command(user_chat_id, args):
         }
     
     # Shorten the link
-    result = shorten_link(user_chat_id, url, custom_alias, password)
+    result = shorten_link(user_id, url, custom_alias, password)
     
     # Check if result is valid (fix NoneType error)
     if not result or not isinstance(result, dict):
@@ -259,9 +278,9 @@ def handle_shortener_command(user_chat_id, args):
     }
 
 
-def handle_mylinks_command(user_chat_id, args=None):
+def handle_mylinks_command(user_id, args=None):
     # Handle my links command with optional page number
-    # Args: user_chat_id, args (optional page number)
+    # Args: user_id, args (optional page number)
     
     page = 1
     if args and args.strip():
@@ -270,7 +289,7 @@ def handle_mylinks_command(user_chat_id, args=None):
         except (ValueError, IndexError):
             page = 1
     
-    return list_user_recent_links(user_chat_id, page)
+    return list_user_recent_links(user_id, page)
 
 
 # ==================== LINK STATS ====================
@@ -313,22 +332,16 @@ def get_link_stats(link_id):
     top_browsers = stats_data.get('topBrowsers', {})
     top_os = stats_data.get('topOs', {})
     
-    # Build stats message
-    message = f"📊 *Link Statistics*\n\n"
-    message += f"🆔 *Link ID:* {link_id}\n"
-    message += f"🔗 *Short URL:* {short_url}\n\n"
-    
-    # Clicks section
-    message += f"📈 *Click Statistics*\n"
-    message += f"- Total Clicks: {clicks}\n"
-    message += f"- Unique Clicks: {unique_clicks}\n\n"
+    # Build stats message using templates from messages.py
+    message = get_message("stats_header", link_id=link_id, short_url=short_url)
+    message += get_message("stats_clicks", clicks=clicks, unique_clicks=unique_clicks)
     
     # Track which stats are available
     available_stats = []
     
     # Top Countries
     if top_countries and any(top_countries.values()):
-        message += "🌍 *Top Countries*\n"
+        message += get_message("stats_countries_header")
         for country, count in list(top_countries.items())[:5]:
             message += f"- {country}: {count}\n"
         message += "\n"
@@ -336,7 +349,7 @@ def get_link_stats(link_id):
     
     # Top Browsers
     if top_browsers and any(top_browsers.values()):
-        message += "🌐 *Top Browsers*\n"
+        message += get_message("stats_browsers_header")
         for browser, count in list(top_browsers.items())[:5]:
             message += f"- {browser}: {count}\n"
         message += "\n"
@@ -344,18 +357,18 @@ def get_link_stats(link_id):
     
     # Top Operating Systems
     if top_os and any(top_os.values()):
-        message += "💻 *Top Operating Systems*\n"
+        message += get_message("stats_os_header")
         for os, count in list(top_os.items())[:5]:
             message += f"- {os}: {count}\n"
         message += "\n"
         available_stats.append("Operating Systems")
     
-    # Add footer message
+    # Add footer message using templates
     if available_stats:
         stats_list = ", ".join(available_stats)
-        message += f"_These are the available statistics: Clicks, {stats_list}_"
+        message += get_message("stats_footer_with_stats", stats_list=stats_list)
     else:
-        message += "_Only click statistics are currently available for this link_"
+        message += get_message("stats_footer_clicks_only")
     
     return message
 

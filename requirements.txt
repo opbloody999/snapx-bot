@@ -6,3 +6,11 @@ requests==2.32.5
 python-dotenv==1.2.1
 beautifulsoup4==4.14.2
 libsql-experimental
+beautifulsoup4==4.14.2
+Flask==3.1.2
+gunicorn==23.0.0
+libsql-experimental
+python-dotenv==1.2.1
+requests==2.32.5
+whatsapp-api-client-python
+whatsapp-chatbot-python==0.9.6

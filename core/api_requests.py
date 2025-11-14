@@ -15,7 +15,8 @@ from core.logger import (
     log_link_shorten_request, log_link_shorten_response, log_link_error,
     log_link_list_request, log_link_list_response,
     log_link_stats_request, log_link_stats_response,
-    log_greenapi_send, log_greenapi_response
+    log_greenapi_send, log_greenapi_response,
+    log_raw_request, log_raw_response
 )
 
 # ==================== GREEN API CREDENTIALS ====================
@@ -69,7 +70,13 @@ def chatgpt_send_message(message, gpt_chat_id=None):
         else:
             url = f"{BATGPT_API_BASE}?message={encoded_message}"
         
+        # Log raw request
+        log_raw_request('ChatGPT API', {'url': url, 'message': message[:100], 'chat_id': gpt_chat_id})
+        
         response = requests.get(url, timeout=30)
+        
+        # Log raw response
+        log_raw_response('ChatGPT API', response.text if response else 'No response', response.status_code if response else None)
         
         if response.status_code != 200:
             log_chatgpt_error('http', status_code=response.status_code)
@@ -138,7 +145,13 @@ def video_download_request(url):
         encoded_url = quote(url, safe='')
         api_url = f"{BATGPT_DOWNLOADER_API}?url={encoded_url}"
         
+        # Log raw request
+        log_raw_request('Video Downloader API', {'api_url': api_url, 'url': url[:100]})
+        
         response = requests.get(api_url, timeout=60)
+        
+        # Log raw response
+        log_raw_response('Video Downloader API', response.text if response else 'No response', response.status_code if response else None)
         
         if response.status_code != 200:
             log_video_error('http', status_code=response.status_code, response_text=response.text[:200])
@@ -245,7 +258,13 @@ def link_shorten_request(url, custom_alias=None, password=None):
         if password:
             payload['password'] = password
         
+        # Log raw request
+        log_raw_request('Link Shortener API', {'url': ICE_BIO_API_URL, 'payload': payload})
+        
         response = requests.post(ICE_BIO_API_URL, headers=headers, json=payload, timeout=30)
+        
+        # Log raw response
+        log_raw_response('Link Shortener API', response.text if response else 'No response', response.status_code if response else None)
         
         if response.status_code != 200:
             log_link_error('http', status_code=response.status_code)
@@ -457,8 +476,14 @@ def greenapi_send_message(chat_id, text):
             "message": text
         }
         
+        # Log raw request
+        log_raw_request('Green API - sendMessage', {'url': url, 'payload': payload})
+        
         response = requests.post(url, json=payload, timeout=30)
         result = response.json() if response.status_code == 200 else None
+        
+        # Log raw response
+        log_raw_response('Green API - sendMessage', result if result else response.text, response.status_code)
         
         if result:
             log_greenapi_response(True, result.get('idMessage', 'N/A'))
@@ -703,6 +728,28 @@ def greenapi_get_contact_info(chat_id):
         
         payload = {
             "chatId": chat_id
+        }
+        
+        response = requests.post(url, json=payload, timeout=30)
+        return response.json() if response.status_code == 200 else None
+        
+    except Exception:
+        return None
+
+
+def greenapi_get_group_data(group_id):
+    # Get group data via Green API
+    # Args: group_id (str) - group ID like "120363345164020774@g.us"
+    # Returns: API response JSON with group info or None on error
+    
+    instance_id, token = _get_greenapi_credentials()
+    
+    try:
+        api_subdomain = instance_id[:4]
+        url = f"https://{api_subdomain}.api.green-api.com/waInstance{instance_id}/getGroupData/{token}"
+        
+        payload = {
+            "groupId": group_id
         }
         
         response = requests.post(url, json=payload, timeout=30)
