@@ -145,7 +145,7 @@ def list_user_recent_links(user_chat_id, page=1):
         return get_message("mylinks_no_links")
     
     # Pagination logic
-    links_per_page = 10
+    links_per_page = 5
     total_links = len(user_links)
     total_pages = (total_links + links_per_page - 1) // links_per_page
     
