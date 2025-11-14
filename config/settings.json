@@ -1,6 +1,6 @@
 {
   "description": "Bot runtime settings and feature toggles - toggle raw_webhook_logging to true to see all API requests/responses",
   "features": {
-    "raw_webhook_logging": true
+    "raw_webhook_logging": false
   }
 }
